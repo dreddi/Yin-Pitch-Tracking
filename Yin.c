@@ -20,7 +20,6 @@ void Yin_difference(Yin *yin, int16_t* buffer){
 
 	/* Calculate the difference for difference shift values (tau) for the half of the samples */
 	for(tau = 1 ; tau < yin->halfBufferSize; tau++){
-		yin->yinBuffer[tau] = 0;
 		/* Take the difference of the signal with a shifted version of itself, then square it.
 		 * (This is the Yin algorithm's tweak on autocorellation) */ 
 		for(i = 0; i < yin->halfBufferSize; i++){
@@ -173,13 +172,8 @@ void Yin_init(Yin *yin, int16_t bufferSize, float threshold){
 	yin->probability = 0.0;
 	yin->threshold = threshold;
 
-	/* Allocate the autocorellation buffer and initialise it to zero */
+	/* Allocate the autocorellation buffer */
 	yin->yinBuffer = (float *) malloc(sizeof(float)* yin->halfBufferSize);
-
-	int16_t i;
-	for(i = 0; i < yin->halfBufferSize; i++){
-		yin->yinBuffer[i] = 0;
-	}
 }
 
 /**
@@ -200,6 +194,12 @@ void Yin_free(Yin *yin){
 float Yin_getPitch(Yin *yin, int16_t* buffer, int sampling_rate){
 	int16_t tauEstimate = -1;
 	float pitchInHertz = -1;
+	
+	// Reinitialise our data structure with each call to Yin_getPitch
+	int16_t i;
+	for(i = 0; i < yin->halfBufferSize; i++){
+		yin->yinBuffer[i] = 0;
+	}
 	
 	/* Step 1: Calculates the squared difference of the signal with a shifted version of itself. */
 	Yin_difference(yin, buffer);
