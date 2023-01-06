@@ -10,7 +10,7 @@
  * Step 1: Calculates the squared difference of the signal with a shifted version of itself.
  * @param buffer Buffer of samples to process. 
  *
- * This is the Yin algorithms tweak on autocorellation. Read http://audition.ens.fr/adc/pdf/2002_JASA_YIN.pdf
+ * This is the Yin algorithms tweak on autocorrelation. Read http://audition.ens.fr/adc/pdf/2002_JASA_YIN.pdf
  * for more details on what is in here and why it's done this way.
  */
 void Yin_difference(Yin *yin, int16_t* buffer){
@@ -21,7 +21,7 @@ void Yin_difference(Yin *yin, int16_t* buffer){
 	/* Calculate the difference for difference shift values (tau) for the half of the samples */
 	for(tau = 1 ; tau < yin->halfBufferSize; tau++){
 		/* Take the difference of the signal with a shifted version of itself, then square it.
-		 * (This is the Yin algorithm's tweak on autocorellation) */ 
+		 * (This is the Yin algorithm's tweak on autocorrelation) */ 
 		for(i = 0; i < yin->halfBufferSize; i++){
 			delta = buffer[i] - buffer[i + tau];
 			yin->yinBuffer[tau] += delta * delta;
@@ -34,7 +34,7 @@ void Yin_difference(Yin *yin, int16_t* buffer){
  * Step 2: Calculate the cumulative mean on the normalised difference calculated in step 1
  * @param yin #Yin structure with information about the signal
  *
- * This goes through the Yin autocorellation values and finds out roughly where shift is which 
+ * This goes through the Yin autocorrelation values and finds out roughly where shift is which 
  * produced the smallest difference
  */
 void Yin_cumulativeMeanNormalizedDifference(Yin *yin){
@@ -42,8 +42,8 @@ void Yin_cumulativeMeanNormalizedDifference(Yin *yin){
 	float runningSum = 0;
 	yin->yinBuffer[0] = 1;
 
-	/* Sum all the values in the autocorellation buffer and nomalise the result, replacing
-	 * the value in the autocorellation buffer with a cumulative mean of the normalised difference */
+	/* Sum all the values in the autocorrelation buffer and normalise the result, replacing
+	 * the value in the autocorrelation buffer with a cumulative mean of the normalised difference */
 	for (tau = 1; tau < yin->halfBufferSize; tau++) {
 		runningSum += yin->yinBuffer[tau];
 		yin->yinBuffer[tau] *= tau / runningSum;
@@ -52,16 +52,18 @@ void Yin_cumulativeMeanNormalizedDifference(Yin *yin){
 
 /**
  * Step 3: Search through the normalised cumulative mean array and find values that are over the threshold
- * @return Shift (tau) which caused the best approximate autocorellation. -1 if no suitable value is found over the threshold.
+ * @return Shift (tau) which caused the best approximate autocorrelation. -1 if no suitable value is found over the threshold.
  */
 int16_t Yin_absoluteThreshold(Yin *yin){
 	int16_t tau;
 
 	/* Search through the array of cumulative mean values, and look for ones that are over the threshold 
-	 * The first two positions in yinBuffer are always so start at the third (index 2) */
-	for (tau = 2; tau < yin->halfBufferSize ; tau++) {
+	 * yin->yinBuffer[0] is always 1, and never below threshold, so let's start at index 1 (tau == 1) */
+	for (tau = 1; tau < yin->halfBufferSize ; tau++) {
 		if (yin->yinBuffer[tau] < yin->threshold) {
+			/* Continue walking for as long as the next item is even lower than the current one. */
 			while (tau + 1 < yin->halfBufferSize && yin->yinBuffer[tau + 1] < yin->yinBuffer[tau]) {
+				/* TODO: Is this a local minimum, or a global minimum? */
 				tau++;
 			}
 			/* found tau, exit loop and return
@@ -93,8 +95,8 @@ int16_t Yin_absoluteThreshold(Yin *yin){
  * @param  tauEstimate [description]
  * @return             [description]
  *
- * The 'best' shift value for autocorellation is most likely not an interger shift of the signal.
- * As we only autocorellated using integer shifts we should check that there isn't a better fractional 
+ * The 'best' shift value for autocorrelation is most likely not an integer shift of the signal.
+ * As we only autocorrelated using integer shifts we should check that there isn't a better fractional 
  * shift value.
  */
 float Yin_parabolicInterpolation(Yin *yin, int16_t tauEstimate) {
@@ -172,7 +174,7 @@ void Yin_init(Yin *yin, int16_t bufferSize, float threshold){
 	yin->probability = 0.0;
 	yin->threshold = threshold;
 
-	/* Allocate the autocorellation buffer */
+	/* Allocate the autocorrelation buffer */
 	yin->yinBuffer = (float *) malloc(sizeof(float)* yin->halfBufferSize);
 }
 
